@@ -1,5 +1,4 @@
 import ccxt
-import tweepy
 import requests
 import pandas as pd
 import pandas_ta as ta
@@ -19,18 +18,8 @@ app = Flask(__name__)
 
 # Binance API Setup
 BINANCE_API_KEY = 'your_binance_api_key'
-BINANCE_SECRET_KEY = 'your_binance_secret_key'
+BINANCE_SECRET_KEY = 'your_binance_api_key_secret'
 binance_client = Client(api_key=BINANCE_API_KEY, api_secret=BINANCE_SECRET_KEY)
-
-# Twitter API Setup
-TWITTER_API_KEY = 'your_twitter_api_key'
-TWITTER_API_SECRET = 'your_twitter_api_secret'
-TWITTER_ACCESS_TOKEN = 'your_twitter_access_token'
-TWITTER_ACCESS_SECRET = 'your_twitter_access_secret'
-
-auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
-auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
-twitter_api = tweepy.API(auth)
 
 # CoinGecko News API
 COINGECKO_NEWS_API_URL = "https://api.coingecko.com/api/v3/search/trending"
@@ -170,15 +159,6 @@ def analyze_sentiment(text):
             sentiment_score -= result['score']
     return sentiment_score
 
-# Twitter Sentiment Analysis
-def fetch_twitter_sentiment(pair):
-    query = f"{pair} crypto"
-    tweets = twitter_api.search_tweets(q=query, lang="en", count=100)
-    texts = [tweet.text for tweet in tweets]
-    combined_text = " ".join(texts)
-    sentiment_score = analyze_sentiment(combined_text)
-    return sentiment_score
-
 # News Sentiment Analysis
 def fetch_news_sentiment():
     response = requests.get(COINGECKO_NEWS_API_URL)
@@ -248,12 +228,11 @@ def trading_logic(pair, interval, lookback):
     ta_signal = (latest_data['RSI'] > 50) + (latest_data['MACD'] > latest_data['MACD_signal']) + (latest_data['ADX'] > 25)
     ta_signal = ta_signal / 3  # Normalize to a 0-1 scale
 
-    twitter_sentiment = fetch_twitter_sentiment(pair)
     news_sentiment = fetch_news_sentiment()
 
-    overall_sentiment = (twitter_sentiment + news_sentiment) / 2
+    overall_sentiment = news_sentiment
 
-    print(f"Pair: {pair} | TA Signal: {ta_signal} | Twitter Sentiment: {twitter_sentiment} | News Sentiment: {news_sentiment}")
+    print(f"Pair: {pair} | TA Signal: {ta_signal} | News Sentiment: {news_sentiment}")
 
     balance = float(binance_client.get_asset_balance(asset='USDT')['free'])
     risk_amount = calculate_risk(balance, overall_sentiment, ta_signal)
@@ -274,3 +253,4 @@ def trading_logic(pair, interval, lookback):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
